@@ -11,8 +11,8 @@ base_layer = function(...){
     ret
 }
 
-layer <- function(obj, extend=FALSE, ...){
-    ret = list(obj=obj, extend=extend)
+layer <- function(obj, extend=FALSE, style=plain(), ...){
+    ret = list(obj=obj, extend=extend, style=style)
     class(ret) <- c("gis","layer")
     ret
 }
@@ -20,7 +20,7 @@ layer <- function(obj, extend=FALSE, ...){
 
 "+.gis" <- function(e1,e2){
     if(inherits(e2,"layer")){
-        e1$layers = c(e1$layers, e2)
+        e1$layers = c(e1$layers, list(e2))
     }
     if(inherits(e2,"base")){
         if(!is.null(e1$base)){
@@ -52,6 +52,21 @@ setMethod("extent", signature(x="gis"),  function(x,...){
 )
 mapbasic <- function(map,...){
     cat("plotting map using base graphics...\n")
+    first=TRUE
+    for(layer in map$layers){
+        if(inherits(layer$obj,"Spatial")){
+            style=layer$style(layer$obj)
+            if(first){
+                plot(layer$obj, col=style$colour )
+                first = FALSE
+            }else{
+                plot(layer$obj,add=TRUE, col=style$colour)
+            }
+        }else if(inherits(layer,"Raster")){
+            stop("cant plot raster")
+        }
+            
+    }
 }
 
 mapgg <- function(map,...){
