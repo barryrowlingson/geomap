@@ -1,24 +1,25 @@
 map <- function(...){
     ret = list(...)
     ret$layers = list()
-    class(ret) <- c("gis","map")
+    ret$extent = NULL
+    class(ret) <- c("geomap","map")
     ret
 }
 
-base_layer = function(...){
+base_layer <- function(...){
     ret = list(...)
-    class(ret) <- c("gis","base")
+    class(ret) <- c("geomap","base")
     ret
 }
 
 layer <- function(obj, extend=FALSE, style=plain(), ...){
     ret = list(obj=obj, extend=extend, style=style)
-    class(ret) <- c("gis","layer")
+    class(ret) <- c("geomap","layer")
     ret
 }
 
 
-"+.gis" <- function(e1,e2){
+"+.geomap" <- function(e1,e2){
     if(inherits(e2,"layer")){
         e1$layers = c(e1$layers, list(e2))
     }
@@ -29,11 +30,11 @@ layer <- function(obj, extend=FALSE, style=plain(), ...){
         e1$base = e2
     }
     
-    class(e1) <- c("gis","map")
+    class(e1) <- c("geomap","map")
     e1
 }
 
-print.gis <- function(x,...){
+print.geomap <- function(x,...){
     cat("Map\n\n")
     cat("Layers: ",length(x$layers),"\n")
     if(!is.null(x$base)){
@@ -41,29 +42,40 @@ print.gis <- function(x,...){
     }else{
         cat("No Base Layer\n")
     }
-    
 }
 
-setOldClass("gis")
+#' "geomap" class
+#'
+#' @name geomap-class
+#' @aliases geomap
+#'
+#' @exportClass geomap
+#' 
+setOldClass("geomap")
 
-setMethod("extent", signature(x="gis"),  function(x,...){
-    
-}
-)
+
+setMethod("extent", signature(x="geomap"),
+          function(x,...){
+              ret = NULL
+              for(layer in x$layers){
+                  if(layer$extend){
+                      ret = raster::merge(extent(layer$obj),ret)
+                  }
+              }
+              ret
+          }
+          )
+
 mapbasic <- function(map,...){
     cat("plotting map using base graphics...\n")
-    first=TRUE
+    e = extent(map)
+    plot(e, type="n", axes=FALSE, xlab="", ylab="", asp=1)
     for(layer in map$layers){
         if(inherits(layer$obj,"Spatial")){
             style=layer$style(layer$obj)
-            if(first){
-                plot(layer$obj, col=style$colour )
-                first = FALSE
-            }else{
-                plot(layer$obj,add=TRUE, col=style$colour)
-            }
-        }else if(inherits(layer,"Raster")){
-            stop("cant plot raster")
+            plot(layer$obj,add=TRUE, col=style$colour)
+        }else if(inherits(layer$obj,"Raster")){
+            plot(layer$obj, add=TRUE, legend=FALSE)
         }
             
     }
